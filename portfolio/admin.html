@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Admin Panel</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; margin-top: 0; }
+        .btn { background: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background 0.2s; }
+        .btn:hover { background: #d35400; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; margin-top: 15px; }
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        textarea { height: 120px; resize: vertical; }
+        .alert { padding: 15px; background: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 20px; display: none; }
+        .error { background: #f8d7da; color: #721c24; }
+        #editor { display: none; }
+        .gallery-item-edit { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
+        .gallery-item-edit img { max-width: 150px; height: auto; display: block; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Portfolio Admin Panel</h1>
+    
+    <div id="status-message" class="alert"></div>
+
+    <div id="setup" class="section">
+        <p>This admin panel runs entirely in your browser using the local File System API. To begin, please select your <b>portfolio</b> folder so we can access the data.</p>
+        <button id="btn-connect" class="btn">Connect to Portfolio Folder</button>
+    </div>
+
+    <div id="editor">
+        <div class="section">
+            <h2>Hero Section</h2>
+            <label>Title</label>
+            <input type="text" id="edit-hero-title">
+            
+            <label>Subtitle</label>
+            <input type="text" id="edit-hero-subtitle">
+            
+            <label>Bio</label>
+            <textarea id="edit-hero-bio"></textarea>
+            
+            <button id="btn-save-hero" class="btn" style="margin-top:15px;">Save Hero Section</button>
+        </div>
+
+        <div class="section">
+            <h2>Gallery Management</h2>
+            <div id="gallery-editor"></div>
+            
+            <h3 style="margin-top:30px;">Add New Photo</h3>
+            <label>Select Image File</label>
+            <input type="file" id="upload-image" accept="image/png, image/jpeg, image/webp">
+            
+            <label>Title</label>
+            <input type="text" id="new-img-title">
+            
+            <label>Description</label>
+            <textarea id="new-img-desc" style="height:60px;"></textarea>
+            
+            <button id="btn-add-photo" class="btn" style="margin-top:15px;">Upload and Add Photo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let dirHandle = null;
+    let siteData = null;
+
+    const setupDiv = document.getElementById('setup');
+    const editorDiv = document.getElementById('editor');
+    const statusDiv = document.getElementById('status-message');
+
+    function showStatus(msg, isError = false) {
+        statusDiv.style.display = 'block';
+        statusDiv.textContent = msg;
+        statusDiv.className = isError ? 'alert error' : 'alert';
+        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+    }
+
+    document.getElementById('btn-connect').addEventListener('click', async () => {
+        try {
+            dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            
+            // Verify it's the right folder
+            try {
+                await dirHandle.getDirectoryHandle('js');
+            } catch (e) {
+                showStatus("This doesn't look like the portfolio folder. Make sure you select the folder containing 'js', 'css', and 'index.html'.", true);
+                return;
+            }
+
+            await loadData();
+            setupDiv.style.display = 'none';
+            editorDiv.style.display = 'block';
+            showStatus("Connected successfully!");
+
+        } catch (error) {
+            console.error(error);
+            showStatus("Failed to access folder. You must grant permission.", true);
+        }
+    });
+
+    async function loadData() {
+        try {
+            const jsDir = await dirHandle.getDirectoryHandle('js');
+            const fileHandle = await jsDir.getFileHandle('data.js');
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            
+            // Very basic parsing to extract the JSON object from the js file
+            const jsonStr = text.replace('const siteData = ', '').replace(/;$/, '');
+            // We use Function to evaluate it safely since JSON.parse might fail on unquoted keys or single quotes
+            siteData = new Function(`return ${jsonStr}`)();
+            
+            populateEditor();
+        } catch (error) {
+            console.error(error);
+            showStatus("Could not load data.js.", true);
+        }
+    }
+
+    function populateEditor() {
+        if (!siteData) return;
+        
+        // Hero
+        if (siteData.hero) {
+            document.getElementById('edit-hero-title').value = siteData.hero.title || '';
+            document.getElementById('edit-hero-subtitle').value = siteData.hero.subtitle || '';
+            document.getElementById('edit-hero-bio').value = siteData.hero.bio || '';
+        }
+
+        // Gallery
+        const galleryEditor = document.getElementById('gallery-editor');
+        galleryEditor.innerHTML = '';
+        
+        if (siteData.gallery) {
+            siteData.gallery.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item-edit';
+                div.innerHTML = `
+                    <img src="${item.src}" alt="Preview">
+                    <strong>${item.title}</strong>
+                    <p style="margin:5px 0;">${item.description}</p>
+                    <button class="btn btn-delete" data-index="${index}" style="background:#dc3545; padding:5px 10px; font-size:12px;">Delete</button>
+                `;
+                galleryEditor.appendChild(div);
+            });
+
+            // Bind delete buttons
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const index = e.target.getAttribute('data-index');
+                    if (confirm("Delete this photo from the gallery?")) {
+                        siteData.gallery.splice(index, 1);
+                        await saveData();
+                        populateEditor();
+                    }
+                });
+            });
+        }
+    }
+
+    async function saveData() {
+        try {
+            const jsDir = await dirHandle.getDirectoryHandle('js');
+            const fileHandle = await jsDir.getFileHandle('data.js', { create: true });
+            const writable = await fileHandle.createWritable();
+            
+            // Format back to JS file
+            const jsContent = `const siteData = ${JSON.stringify(siteData, null, 4)};`;
+            
+            await writable.write(jsContent);
+            await writable.close();
+            showStatus("Changes saved successfully!");
+        } catch (error) {
+            console.error(error);
+            showStatus("Failed to save changes.", true);
+        }
+    }
+
+    // Save Hero
+    document.getElementById('btn-save-hero').addEventListener('click', async () => {
+        siteData.hero.title = document.getElementById('edit-hero-title').value;
+        siteData.hero.subtitle = document.getElementById('edit-hero-subtitle').value;
+        siteData.hero.bio = document.getElementById('edit-hero-bio').value;
+        await saveData();
+    });
+
+    // Add Photo
+    document.getElementById('btn-add-photo').addEventListener('click', async () => {
+        const fileInput = document.getElementById('upload-image');
+        const title = document.getElementById('new-img-title').value;
+        const desc = document.getElementById('new-img-desc').value;
+
+        if (!fileInput.files.length || !title) {
+            showStatus("Please select an image and enter a title.", true);
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const fileName = `${Date.now()}_${file.name}`;
+        
+        try {
+            // Write file to assets/images
+            const assetsDir = await dirHandle.getDirectoryHandle('assets');
+            const imagesDir = await assetsDir.getDirectoryHandle('images');
+            const fileHandle = await imagesDir.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(file);
+            await writable.close();
+
+            // Add to data
+            if (!siteData.gallery) siteData.gallery = [];
+            siteData.gallery.push({
+                src: `assets/images/${fileName}`,
+                alt: title,
+                title: title,
+                description: desc
+            });
+
+            await saveData();
+            populateEditor();
+            
+            // Reset form
+            fileInput.value = '';
+            document.getElementById('new-img-title').value = '';
+            document.getElementById('new-img-desc').value = '';
+            
+        } catch (error) {
+            console.error(error);
+            showStatus("Failed to upload image.", true);
+        }
+    });
+</script>
+</body>
+</html>

@@ -47,21 +47,20 @@ If you have Node.js installed:
 1. Run `npx http-server` in the `portfolio` directory.
 2. Open your browser to the URL provided in the terminal.
 
-## Adding Photos to the Gallery
+## Adding Photos and Editing Content (Admin Panel)
 
-To add a new photo to the portfolio section:
-1. Place your high-quality image file in the `assets/images/` directory.
-2. Open `js/main.js`.
-3. Locate the `galleryData` array.
-4. Add a new object following the existing structure:
-   ```javascript
-   {
-       src: 'assets/images/your-new-image.jpg',
-       alt: 'Descriptive text for screen readers',
-       title: 'Title of the activity',
-       description: 'A brief description of what is happening in the photo.'
-   }
-   ```
+We have included a completely local, user-friendly **Admin Panel** that runs directly in your browser without needing any backend software!
+
+1. Open `admin.html` in a modern browser (like Google Chrome or Microsoft Edge).
+2. Click the **"Connect to Portfolio Folder"** button.
+3. Your browser will prompt you to select a folder. Select the `portfolio` folder itself.
+4. Your browser will ask for permission to view and save files. Click "Save Changes" or "Allow".
+5. The Admin Panel will appear! From here, you can:
+   - Edit the text on your Hero section.
+   - Upload new photos directly from your computer into the Gallery.
+   - Delete existing photos.
+
+All changes are saved instantly to `js/data.js` and `assets/images/`.
 
 ## Deployment Instructions
 

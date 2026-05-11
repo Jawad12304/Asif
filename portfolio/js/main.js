@@ -38,45 +38,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Photo Gallery Data (Phase 1: JS Array) ---
-    // In Phase 2, this could be fetched from a JSON file or CMS API.
-    const galleryData = [
-        {
-            src: 'assets/images/ecd_activity_1.png',
-            alt: 'Child engaged in a Montessori learning activity with wooden blocks.',
-            title: 'Montessori Activity',
-            description: 'Observation of spatial reasoning and fine motor skill development.'
-        },
-        {
-            src: 'assets/images/ecd_activity_2.png',
-            alt: 'Group of children doing an arts and crafts painting project.',
-            title: 'Collaborative Art',
-            description: 'Fostering social-emotional learning through group creative tasks.'
+    // --- Populate Data from data.js ---
+    if (typeof siteData !== 'undefined') {
+        const titleEl = document.getElementById('hero-title');
+        const subtitleEl = document.getElementById('hero-subtitle');
+        const bioEl = document.getElementById('hero-bio');
+        
+        if (titleEl && siteData.hero?.title) titleEl.textContent = siteData.hero.title;
+        if (subtitleEl && siteData.hero?.subtitle) subtitleEl.textContent = siteData.hero.subtitle;
+        if (bioEl && siteData.hero?.bio) bioEl.textContent = siteData.hero.bio;
+        
+        // --- Photo Gallery Data ---
+        const galleryData = siteData.gallery || [];
+        const galleryContainer = document.getElementById('gallery-container');
+        
+        if (galleryContainer && galleryData.length > 0) {
+            galleryData.forEach((item, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.setAttribute('role', 'button');
+                galleryItem.setAttribute('tabindex', '0');
+                galleryItem.setAttribute('aria-label', `View larger image of ${item.title}`);
+                galleryItem.dataset.index = index;
+
+                galleryItem.innerHTML = `
+                    <img src="${item.src}" alt="${item.alt}" loading="lazy">
+                    <div class="gallery-overlay">
+                        <h3>${item.title}</h3>
+                        <p>${item.description}</p>
+                    </div>
+                `;
+                
+                galleryContainer.appendChild(galleryItem);
+            });
         }
-        // To add more photos, simply place the image in assets/images/ and add an object here.
-    ];
-
-    const galleryContainer = document.getElementById('gallery-container');
-    
-    if (galleryContainer && galleryData.length > 0) {
-        galleryData.forEach((item, index) => {
-            const galleryItem = document.createElement('div');
-            galleryItem.className = 'gallery-item';
-            galleryItem.setAttribute('role', 'button');
-            galleryItem.setAttribute('tabindex', '0');
-            galleryItem.setAttribute('aria-label', `View larger image of ${item.title}`);
-            galleryItem.dataset.index = index;
-
-            galleryItem.innerHTML = `
-                <img src="${item.src}" alt="${item.alt}" loading="lazy">
-                <div class="gallery-overlay">
-                    <h3>${item.title}</h3>
-                    <p>${item.description}</p>
-                </div>
-            `;
-            
-            galleryContainer.appendChild(galleryItem);
-        });
+    } else {
+        console.error("siteData not found. Make sure data.js is loaded.");
     }
 
     // --- Lightbox Modal ---
@@ -87,7 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const galleryItems = document.querySelectorAll('.gallery-item');
 
     function openLightbox(index) {
-        const item = galleryData[index];
+        if (typeof siteData === 'undefined' || !siteData.gallery) return;
+        const item = siteData.gallery[index];
         if (!item) return;
         
         lightboxImg.src = item.src;
