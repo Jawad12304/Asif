@@ -57,13 +57,21 @@
             <label>Select Image File</label>
             <input type="file" id="upload-image" accept="image/png, image/jpeg, image/webp">
             
-            <label>Title</label>
-            <input type="text" id="new-img-title">
-            
-            <label>Description</label>
-            <textarea id="new-img-desc" style="height:60px;"></textarea>
-            
-            <button id="btn-add-photo" class="btn" style="margin-top:15px;">Upload and Add Photo</button>
+            <div id="upload-preview-container" style="display: none; margin-top: 15px; background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px;">
+                <h4 style="margin-top:0;">Upload Preview</h4>
+                <img id="upload-preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 300px; display: block; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                
+                <label>Title</label>
+                <input type="text" id="new-img-title">
+                
+                <label>Description</label>
+                <textarea id="new-img-desc" style="height:60px;"></textarea>
+                
+                <div style="margin-top:15px; display: flex; gap: 10px;">
+                    <button id="btn-add-photo" class="btn">Save Photo</button>
+                    <button id="btn-discard-photo" class="btn" style="background: #6c757d;">Discard</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -192,14 +200,43 @@
         await saveData();
     });
 
-    // Add Photo
+    // Image Preview
+    let currentPreviewUrl = null;
+    const fileInput = document.getElementById('upload-image');
+    const previewContainer = document.getElementById('upload-preview-container');
+    const previewImg = document.getElementById('upload-preview-img');
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
+            currentPreviewUrl = URL.createObjectURL(file);
+            previewImg.src = currentPreviewUrl;
+            previewContainer.style.display = 'block';
+        } else {
+            resetUploadForm();
+        }
+    });
+
+    function resetUploadForm() {
+        if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
+        currentPreviewUrl = null;
+        fileInput.value = '';
+        previewImg.src = '';
+        document.getElementById('new-img-title').value = '';
+        document.getElementById('new-img-desc').value = '';
+        previewContainer.style.display = 'none';
+    }
+
+    document.getElementById('btn-discard-photo').addEventListener('click', resetUploadForm);
+
+    // Save Photo
     document.getElementById('btn-add-photo').addEventListener('click', async () => {
-        const fileInput = document.getElementById('upload-image');
         const title = document.getElementById('new-img-title').value;
         const desc = document.getElementById('new-img-desc').value;
 
         if (!fileInput.files.length || !title) {
-            showStatus("Please select an image and enter a title.", true);
+            showStatus("Please enter a title for the image.", true);
             return;
         }
 
@@ -226,11 +263,7 @@
 
             await saveData();
             populateEditor();
-            
-            // Reset form
-            fileInput.value = '';
-            document.getElementById('new-img-title').value = '';
-            document.getElementById('new-img-desc').value = '';
+            resetUploadForm();
             
         } catch (error) {
             console.error(error);
